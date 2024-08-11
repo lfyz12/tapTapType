@@ -49,6 +49,8 @@ export class WordStore {
         this.misstakes = 0;
         this.currentWordIndex = 0;
         this.currentCharIndex = 0;
+        this.isCorrectChars = 0;
+        this.wpm = 0;
         this.setIsEnd(false);
     }
 
