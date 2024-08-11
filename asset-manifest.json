@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/tapTapType/static/css/main.503abb7a.css",
+    "main.js": "/tapTapType/static/js/main.18f6a12c.js",
+    "index.html": "/tapTapType/index.html",
+    "main.503abb7a.css.map": "/tapTapType/static/css/main.503abb7a.css.map",
+    "main.18f6a12c.js.map": "/tapTapType/static/js/main.18f6a12c.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.503abb7a.css",
+    "static/js/main.18f6a12c.js"
+  ]
+}
