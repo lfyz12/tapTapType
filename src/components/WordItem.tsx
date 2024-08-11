@@ -12,11 +12,9 @@ type WordProps = {
 const WordItem: FC<WordProps> = ({word, index}: WordProps) => {
 
     return (
-        <div className='ms-2.5'>
-            {
-                word.value.map((letter: ITypeChar, index: number) =>
-               <Letter letter={letter} key={index}/>)
-            }
+        <div className='ms-2.5 flex flex-wrap'>
+            {word.value.map((letter: ITypeChar, index: number) =>
+                <Letter letter={letter} key={index}/>)}
         </div>
     );
 };

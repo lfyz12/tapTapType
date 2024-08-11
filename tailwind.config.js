@@ -4,7 +4,9 @@ module.exports = {
       './src/components/WordDisplay.tsx',
     './src/components/Letter.tsx',
     './src/components/WordItem.tsx',
-    './src/components/InputWord.tsx'
+    './src/components/InputWord.tsx',
+    './src/components/Header.tsx',
+    './src/components/ResultScreen.tsx'
   ],
   theme: {
     extend: {},
