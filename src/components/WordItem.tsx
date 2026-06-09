@@ -1,6 +1,5 @@
-import React, {FC, useState} from 'react';
+import React, {FC} from 'react';
 import Letter from "./Letter";
-import {values} from "mobx";
 import {ITypeChar, ITypeWord} from "../store/WordStore";
 
 type WordProps = {
@@ -8,14 +7,12 @@ type WordProps = {
     index: number
 }
 
-
-const WordItem: FC<WordProps> = ({word, index}: WordProps) => {
-
+const WordItem: FC<WordProps> = ({word}: WordProps) => {
     return (
-        <div className='ms-2.5 flex flex-wrap'>
+        <span className="inline">
             {word.value.map((letter: ITypeChar, index: number) =>
                 <Letter letter={letter} key={index}/>)}
-        </div>
+        </span>
     );
 };
 

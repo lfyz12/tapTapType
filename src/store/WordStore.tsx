@@ -1,16 +1,12 @@
 import { makeAutoObservable } from "mobx";
 import WordApi from "../api/WordApi";
-import { Simulate } from "react-dom/test-utils";
-import reset = Simulate.reset;
 
-// Интерфейс описывающий структуру слова в системе
 export interface ITypeWord {
     value: ITypeChar[];
     currentIndex: number;
     length: number;
 }
 
-// Интерфейс описывающий структуру символа
 export interface ITypeChar {
     value: string;
     active: boolean;
@@ -18,7 +14,6 @@ export interface ITypeChar {
     isCorrect: isCorrectStatus;
 }
 
-// Перечисление возможных статусов символа (правильный, неправильный, неопределенный)
 export const enum isCorrectStatus {
     'correct',
     'incorrect',
@@ -26,50 +21,59 @@ export const enum isCorrectStatus {
 }
 
 export class WordStore {
-    words: ITypeWord[] = [] as ITypeWord[]; // Массив слов
-    currentWordIndex: number = 0; // Индекс текущего слова
-    currentCharIndex: number = 0; // Индекс текущего символа
-    misstakes: number = 0; // Количество ошибок пользователя
-    isCorrectChars: number = 0; // Количество правильно введенных символов
-    time: number = 30; // Время, за которое пользователь должен напечатать слова (секунды)
-    wpm: number = 0; // Скорость печати
-    isEnd: boolean = false; // Индикатор об окончании времени
+    words: ITypeWord[] = [];
+    currentWordIndex: number = 0;
+    currentCharIndex: number = 0;
+    mistakes: number = 0;
+    isCorrectChars: number = 0;
+    totalKeystrokes: number = 0;
+    time: number = 30;
+    wpm: number = 0;
+    rawWpm: number = 0;
+    isEnd: boolean = false;
 
     constructor() {
         makeAutoObservable(this);
     }
 
-    // Устанавливает слова в хранилище
-    setWords(words: ITypeWord[]) {
-        this.words = words;
+    get accuracy(): number {
+        if (this.totalKeystrokes === 0) return 100;
+        return Math.round((this.isCorrectChars / this.totalKeystrokes) * 100);
     }
 
-    // Сбрасывает текущее состояние хранилища
-    reset() {
-        this.misstakes = 0;
-        this.currentWordIndex = 0;
-        this.currentCharIndex = 0;
-        this.isCorrectChars = 0;
-        this.wpm = 0;
-        this.setIsEnd(false);
-    }
-
-    // Геттер для получения текущего слова
     get currentWord(): ITypeWord {
         return this.words[this.currentWordIndex];
     }
 
-    // Геттер для получения текущего символа
     get currentChar(): ITypeChar {
         return this.currentWord.value[this.currentCharIndex];
     }
 
-    plusMisstakes() {
-        this.misstakes++;
+    setWords(words: ITypeWord[]) {
+        this.words = words;
+    }
+
+    reset() {
+        this.mistakes = 0;
+        this.currentWordIndex = 0;
+        this.currentCharIndex = 0;
+        this.isCorrectChars = 0;
+        this.totalKeystrokes = 0;
+        this.wpm = 0;
+        this.rawWpm = 0;
+        this.setIsEnd(false);
+    }
+
+    plusMistakes() {
+        this.mistakes++;
     }
 
     plusChar() {
         this.isCorrectChars++;
+    }
+
+    plusTotalKeystrokes() {
+        this.totalKeystrokes++;
     }
 
     setIsEnd(bool: boolean) {
@@ -80,59 +84,52 @@ export class WordStore {
         this.time = time;
     }
 
-    // Подсчитывает количество слов в минуту (WPM)
-    countWPM() {
-        const wordsTyped = this.isCorrectChars / 5;
-        const minutes = this.time / 60;
-        this.wpm = Math.round(wordsTyped / minutes);
+    countWPM(elapsedSeconds: number) {
+        const minutes = elapsedSeconds / 60;
+        if (minutes <= 0) return;
+        this.wpm = Math.round((this.isCorrectChars / 5) / minutes);
+        this.rawWpm = Math.round((this.totalKeystrokes / 5) / minutes);
     }
 
-    // Преобразует слово в массив символов (ITypeChar)
     sepToChars(word: string, wordIndex: number): ITypeChar[] {
-        return word.split('').map((char: string, index: number) => {
-            return {
-                value: char,
-                active: wordIndex === 0 && index === 0 ? true : false,
-                isCorrect: isCorrectStatus.indefinite,
-                currentIndex: index
-            };
-        });
+        return word.split('').map((char: string, index: number) => ({
+            value: char,
+            active: wordIndex === 0 && index === 0,
+            isCorrect: isCorrectStatus.indefinite,
+            currentIndex: index
+        }));
     }
 
     goToBackChar() {
         const currentChar = this.currentChar;
-        currentChar.isCorrect = isCorrectStatus.indefinite; // Возвращаем статус символа к неопределенному
-        this.getBackChar(); // Переход к предыдущему символу
+        currentChar.isCorrect = isCorrectStatus.indefinite;
+        this.getBackChar();
     }
 
-    // Проверяет правильность введенного символа
     checkTypeChar(inputChar: string) {
         const currentChar = this.currentChar;
+        this.plusTotalKeystrokes();
 
         if (inputChar === this.currentChar.value) {
             currentChar.isCorrect = isCorrectStatus.correct;
             this.plusChar();
-            this.getNextChar(); // Переход к следующему символу
+            this.getNextChar();
         } else {
             currentChar.isCorrect = isCorrectStatus.incorrect;
-
-            this.plusMisstakes();
-            this.getNextChar(); // Переход к следующему символу
+            this.plusMistakes();
+            this.getNextChar();
         }
     }
 
-    // Получение списка русских слов
     async getRussianWords(count: number) {
         try {
             const { data } = await WordApi.getRussianWords(count);
-            const words: ITypeWord[] = data.text.split(' ').map((word: string, index: number) => {
-                return {
-                    active: false,
-                    value: this.sepToChars(word, index),
-                    currentIndex: index,
-                    length: word.length
-                };
-            });
+            const words: ITypeWord[] = data.text.split(' ').map((word: string, index: number) => ({
+                active: false,
+                value: this.sepToChars(word, index),
+                currentIndex: index,
+                length: word.length
+            }));
             this.setWords(words);
             return data.status;
         } catch (error) {
@@ -140,31 +137,44 @@ export class WordStore {
         }
     }
 
-    // Получение списка английских слов
+    async getRussianWordsAsWords(count: number) {
+        try {
+            const { data } = await WordApi.getRussianWords(Math.ceil(count / 3));
+            const allWords: string[] = data.text
+                .split(/[\s,.!?;:()"—«»]+/)
+                .filter((w: string) => w.length > 1 && /[а-яА-ЯёЁ]/.test(w));
+            const shuffled = allWords.sort(() => Math.random() - 0.5).slice(0, count);
+            const words: ITypeWord[] = shuffled.map((word: string, index: number) => ({
+                active: false,
+                value: this.sepToChars(word, index),
+                currentIndex: index,
+                length: word.length
+            }));
+            this.setWords(words);
+            return data.status;
+        } catch (error) {
+            return error;
+        }
+    }
+
     async getEnglishWords(count: number) {
         try {
             const { data } = await WordApi.getEnglishWords(count);
-            const words: ITypeWord[] = data.body.map((word: string, index: number) => {
-                return {
-                    active: false,
-                    value: this.sepToChars(word, index),
-                    currentIndex: index,
-                    length: word.length
-                };
-            });
-
+            const words: ITypeWord[] = data.body.map((word: string, index: number) => ({
+                active: false,
+                value: this.sepToChars(word, index),
+                currentIndex: index,
+                length: word.length
+            }));
             this.setWords(words);
-
             return data.status;
         } catch (error) {
             return error;
         }
     }
 
-    // Переход к следующему слову
     getNextWord() {
         this.currentChar.active = false;
-
         if (this.currentWordIndex < this.words.length - 1) {
             this.currentWordIndex++;
             this.currentCharIndex = 0;
@@ -172,7 +182,6 @@ export class WordStore {
         }
     }
 
-    // Переход к следующему символу
     getNextChar() {
         if (this.currentCharIndex < this.currentWord.length - 1) {
             this.currentChar.active = false;
@@ -181,7 +190,6 @@ export class WordStore {
         }
     }
 
-    // Переход к предыдущему символу
     getBackChar() {
         if (this.currentCharIndex <= this.currentWord.length - 1 && this.currentCharIndex !== 0) {
             this.currentChar.active = false;
